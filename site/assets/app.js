@@ -7,7 +7,7 @@ const BR_CENTER=[-52.6,-14.2];
 
 const map=new maplibregl.Map({
   container:'map',center:BR_CENTER,zoom:3.25,minZoom:2.5,maxZoom:18,attributionControl:true,
-  style:{version:8,sources:{base:{type:'raster',tiles:['https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'],tileSize:256,attribution:'© OpenStreetMap © CARTO'}},layers:[{id:'base',type:'raster',source:'base',paint:{'raster-opacity':.94}}]}
+  style:{version:8,sources:{base:{type:'raster',tiles:['https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png?key=__CARTO_BASEMAP_KEY__'],tileSize:256,attribution:'© OpenStreetMap contributors, © CARTO'}},layers:[{id:'base',type:'raster',source:'base',paint:{'raster-opacity':.94}}]}
 });
 map.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
 
