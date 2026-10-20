@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#081017" />
+  <meta name="description" content="Consulte pela seção do 1º turno se o seu local de votação mudou para o 2º turno das Eleições 2026." />
+  <title>Onde voto agora? — 2º turno 2026</title>
+  <link rel="preconnect" href="https://unpkg.com" />
+  <link rel="preconnect" href="https://a.basemaps.cartocdn.com" />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="./assets/styles.css" />
+</head>
+<body>
+  <div id="map" aria-label="Mapa do Brasil com alterações de locais de votação"></div>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <header class="topbar glass">
+    <a class="brand" href="#" id="brandHome" aria-label="Voltar para o mapa do Brasil">
+      <span class="brand-mark">2º</span>
+      <span><strong>Onde voto agora?</strong><small>2º turno • 25 de outubro</small></span>
+    </a>
+    <div class="topbar-actions">
+      <div id="sourceStatus" class="source-status" aria-live="polite"><span class="live-dot"></span><strong>carregando dados</strong></div>
+      <button id="aboutBtn" class="ghost-btn">Sobre os dados</button>
+    </div>
+  </header>
+
+  <main class="lookup glass" aria-labelledby="lookupTitle">
+    <p class="eyebrow">CONSULTE PELA SEÇÃO EM QUE VOCÊ VOTOU</p>
+    <h1 id="lookupTitle">Seu local mudou no 2º turno?</h1>
+    <p class="lookup-copy">Digite a <strong>seção do 1º turno</strong> e a UF. Município e zona são opcionais, mas ajudam a desempatar números que se repetem. Se houver mudança, mostramos o destino e aproximamos o mapa.</p>
+
+    <form id="sectionForm" class="section-form">
+      <label class="section-field"><span>Seção do 1º turno</span><input id="lookupSection" inputmode="numeric" autocomplete="off" placeholder="Ex.: 50" required /></label>
+      <label><span>UF</span><select id="lookupUf" required><option value="">UF</option></select></label>
+      <label class="city-field"><span>Município <em>opcional</em></span><input id="lookupCity" list="cityOptions" autocomplete="off" placeholder="Ex.: São Paulo" /><datalist id="cityOptions"></datalist></label>
+      <label><span>Zona <em>opcional</em></span><input id="lookupZone" inputmode="numeric" autocomplete="off" placeholder="Ex.: 1" /></label>
+      <button type="submit" class="primary-btn">Ver onde votar <span>→</span></button>
+    </form>
+
+    <div class="quick-search">
+      <span>ou pesquise</span>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m1.35-5.65A7 7 0 1 1 4 11a7 7 0 0 1 14 0Z"/></svg>
+        <input id="search" autocomplete="off" placeholder="cidade, escola, endereço, zona ou seção" aria-label="Pesquisar locais de votação" />
+        <div id="searchResults" class="search-results hidden" role="listbox"></div>
+      </div>
+    </div>
+    <div id="lookupMessage" class="lookup-message hidden" aria-live="polite"></div>
+  </main>
+
+  <section class="map-controls glass" aria-label="Camadas do mapa">
+    <button class="filter-chip active" data-mode="changes"><i class="dot changed"></i> Mudanças do 2º turno</button>
+    <button class="filter-chip" data-mode="all"><i class="dot current"></i> Todas as seções</button>
+    <select id="ufFilter" aria-label="Filtrar o mapa por UF"><option value="">Brasil inteiro</option></select>
+  </section>
+
+  <aside id="stats" class="stats glass" aria-live="polite">
+    <div><strong id="statSections">—</strong><span>seções alteradas</span></div>
+    <div><strong id="statCities">—</strong><span>municípios</span></div>
+    <div><strong id="statUpdated">—</strong><span>snapshot</span></div>
+  </aside>
+
+  <aside id="drawer" class="drawer glass" aria-hidden="true">
+    <button id="closeDrawer" class="drawer-close" aria-label="Fechar">×</button>
+    <div id="drawerContent"></div>
+  </aside>
+
+  <div id="about" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+    <section class="modal glass">
+      <button id="closeAbout" class="drawer-close" aria-label="Fechar">×</button>
+      <p class="eyebrow">FONTE E METODOLOGIA</p>
+      <h2 id="aboutTitle">O que mudou do 1º para o 2º turno.</h2>
+      <p>O foco é a relação da Justiça Eleitoral <strong>“Seções Eleitorais Alteradas no Segundo Turno”</strong>, exibida nas Estatísticas Eleitorais em Eleitorado da eleição → Capilaridade.</p>
+      <p>O site pesquisa primeiro a seção informada na lista de alterações. Quando uma redistribuição também altera o número da seção, mostramos <strong>seção do 1º turno → seção do 2º turno</strong>. O cadastro nacional de locais de votação de 2026 completa endereço, coordenadas e a camada “Todas as seções”.</p>
+      <p>A relação é dinâmica. Cada publicação registra a data do snapshot e, se a coleta automática falhar, o site identifica que está usando o último snapshot disponível. Para confirmação individual definitiva, use o e-Título ou o Autoatendimento Eleitoral do TSE.</p>
+      <p>Este site não pede CPF, título de eleitor, data de nascimento ou nome da mãe.</p>
+      <div class="source-links">
+        <a href="https://www.tse.jus.br/comunicacao/noticias/2026/Outubro/entenda-por-que-a-justica-eleitoral-trocou-o-endereco-de-algumas-secoes-para-o-2o-turno" target="_blank" rel="noreferrer">Explicação do TSE ↗</a>
+        <a href="https://www.tse.jus.br/servicos-eleitorais/autoatendimento-eleitoral#/" target="_blank" rel="noreferrer">Confirmar no TSE ↗</a>
+      </div>
+    </section>
+  </div>
+
+  <div id="staleBanner" class="data-banner stale-banner hidden">A coleta mais recente do TSE falhou. Este mapa está mostrando o último snapshot oficial disponível.</div>
+  <div id="demoBanner" class="data-banner demo-banner hidden">Prévia de desenvolvimento: estes dados são apenas uma amostra para testar a interface. Não publique como consulta oficial.</div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script type="module" src="./assets/app.js"></script>
+</body>
+</html>

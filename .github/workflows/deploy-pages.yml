@@ -1,0 +1,105 @@
+name: Atualizar TSE e publicar GitHub Pages
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 06:45, 12:45 e 18:45 no horário de Brasília durante outubro (UTC-3).
+    - cron: '45 9,15,21 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'data-src/**'
+      - 'scripts/**'
+      - 'requirements.txt'
+      - '.github/workflows/deploy-pages.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Instalar navegador para o painel do TSE
+        run: python -m playwright install --with-deps chromium
+
+      - name: Exportar lista atual do TSE
+        id: tse
+        continue-on-error: true
+        run: >-
+          python scripts/fetch_tse_changes.py
+          --out .cache/alteracoes-oficiais.csv
+          --meta-out .cache/alteracoes-oficiais.meta.json
+          --debug-dir .debug-tse
+
+      - name: Escolher snapshot
+        id: snapshot
+        shell: bash
+        run: |
+          if [[ "${{ steps.tse.outcome }}" == "success" ]]; then
+            echo "changes=.cache/alteracoes-oficiais.csv" >> "$GITHUB_OUTPUT"
+            echo "meta=.cache/alteracoes-oficiais.meta.json" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ -f data-src/alteracoes-oficiais.csv && -f data-src/alteracoes-oficiais.meta.json ]]; then
+            echo "O painel do TSE não exportou nesta execução; usando o último snapshot versionado." >&2
+            python -c "import json; from pathlib import Path; p=Path('data-src/alteracoes-oficiais.meta.json'); d=json.loads(p.read_text(encoding='utf-8')); d['stale']=True; Path('.cache').mkdir(exist_ok=True); Path('.cache/fallback.meta.json').write_text(json.dumps(d,ensure_ascii=False,indent=2),encoding='utf-8')"
+            echo "changes=data-src/alteracoes-oficiais.csv" >> "$GITHUB_OUTPUT"
+            echo "meta=.cache/fallback.meta.json" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Falha ao exportar o TSE e não há snapshot oficial versionado para fallback." >&2
+          exit 1
+
+      - name: Gerar base nacional do site
+        run: >-
+          python scripts/build_data.py
+          --changes-file "${{ steps.snapshot.outputs.changes }}"
+          --snapshot-meta "${{ steps.snapshot.outputs.meta }}"
+          --out site/data
+
+      - name: Validar saída pública
+        run: python scripts/validate_data.py site/data --min-changed-sections 100
+
+      - name: Guardar diagnóstico do coletor
+        if: always() && hashFiles('.debug-tse/**') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostico-coletor-tse
+          path: .debug-tse
+          retention-days: 7
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Publicar
+        id: deployment
+        uses: actions/deploy-pages@v4
