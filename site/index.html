@@ -3,82 +3,211 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#081017" />
+  <meta name="theme-color" content="#eaf2fb" />
   <meta name="description" content="Consulte pela seção do 1º turno se o seu local de votação mudou para o 2º turno das Eleições 2026." />
   <title>Onde voto agora? — 2º turno 2026</title>
   <link rel="preconnect" href="https://unpkg.com" />
-  <link rel="preconnect" href="https://a.basemaps.cartocdn.com" />
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="./assets/styles.css" />
 </head>
 <body>
   <div id="map" aria-label="Mapa do Brasil com alterações de locais de votação"></div>
-  <div class="vignette" aria-hidden="true"></div>
+  <div class="map-soft-mask" aria-hidden="true"></div>
 
-  <header class="topbar glass">
+  <header class="topbar shell">
     <a class="brand" href="#" id="brandHome" aria-label="Voltar para o mapa do Brasil">
       <span class="brand-mark">2º</span>
-      <span><strong>Onde voto agora?</strong><small>2º turno • 25 de outubro</small></span>
+      <span>
+        <strong>Onde voto agora?</strong>
+        <small>Mapa nacional de mudanças de local • 2º turno</small>
+      </span>
     </a>
-    <div class="topbar-actions">
-      <div id="sourceStatus" class="source-status" aria-live="polite"><span class="live-dot"></span><strong>carregando dados</strong></div>
-      <button id="aboutBtn" class="ghost-btn">Sobre os dados</button>
-    </div>
+    <nav class="topbar-actions">
+      <button id="searchBtn" class="toolbar-btn">Buscar local</button>
+      <button id="tableBtn" class="toolbar-btn">Tabela completa</button>
+      <button id="aboutBtn" class="toolbar-btn">Metodologia</button>
+      <a class="official-btn" href="https://www.tse.jus.br/servicos-eleitorais/autoatendimento-eleitoral#/" target="_blank" rel="noreferrer">Verificação oficial no TSE ↗</a>
+    </nav>
   </header>
 
-  <main class="lookup glass" aria-labelledby="lookupTitle">
-    <p class="eyebrow">CONSULTE PELA SEÇÃO EM QUE VOCÊ VOTOU</p>
-    <h1 id="lookupTitle">Seu local mudou no 2º turno?</h1>
-    <p class="lookup-copy">Digite a <strong>seção do 1º turno</strong> e a UF. Município e zona são opcionais, mas ajudam a desempatar números que se repetem. Se houver mudança, mostramos o destino e aproximamos o mapa.</p>
+  <main id="lookupPanel" class="lookup-panel shell" aria-labelledby="lookupTitle">
+    <div class="lookup-header">
+      <div>
+        <p class="eyebrow">CONSULTE PELA SEÇÃO EM QUE VOCÊ VOTOU NO 1º TURNO</p>
+        <h1 id="lookupTitle">Descubra onde votar agora</h1>
+      </div>
+      <button id="toggleLookup" class="icon-btn" aria-label="Minimizar painel">—</button>
+    </div>
 
-    <form id="sectionForm" class="section-form">
-      <label class="section-field"><span>Seção do 1º turno</span><input id="lookupSection" inputmode="numeric" autocomplete="off" placeholder="Ex.: 50" required /></label>
-      <label><span>UF</span><select id="lookupUf" required><option value="">UF</option></select></label>
-      <label class="city-field"><span>Município <em>opcional</em></span><input id="lookupCity" list="cityOptions" autocomplete="off" placeholder="Ex.: São Paulo" /><datalist id="cityOptions"></datalist></label>
-      <label><span>Zona <em>opcional</em></span><input id="lookupZone" inputmode="numeric" autocomplete="off" placeholder="Ex.: 1" /></label>
-      <button type="submit" class="primary-btn">Ver onde votar <span>→</span></button>
-    </form>
+    <div class="lookup-body">
+      <p class="lookup-copy">
+        Informe a <strong>seção do 1º turno</strong> e a UF. Município e zona ajudam a desempatar.
+        Se houver mudança, mostramos com destaque o <strong>novo local</strong> e mantemos o botão oficial do TSE sempre visível.
+      </p>
 
-    <div class="quick-search">
-      <span>ou pesquise</span>
-      <div class="search-wrap">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m1.35-5.65A7 7 0 1 1 4 11a7 7 0 0 1 14 0Z"/></svg>
-        <input id="search" autocomplete="off" placeholder="cidade, escola, endereço, zona ou seção" aria-label="Pesquisar locais de votação" />
-        <div id="searchResults" class="search-results hidden" role="listbox"></div>
+      <form id="sectionForm" class="section-form">
+        <label>
+          <span>Seção do 1º turno</span>
+          <input id="lookupSection" inputmode="numeric" autocomplete="off" placeholder="Ex.: 50" required />
+        </label>
+        <label>
+          <span>UF</span>
+          <select id="lookupUf" required><option value="">UF</option></select>
+        </label>
+        <label>
+          <span>Município <em>opcional</em></span>
+          <input id="lookupCity" list="cityOptions" autocomplete="off" placeholder="Ex.: São Paulo" />
+          <datalist id="cityOptions"></datalist>
+        </label>
+        <label>
+          <span>Zona <em>opcional</em></span>
+          <input id="lookupZone" inputmode="numeric" autocomplete="off" placeholder="Ex.: 1" />
+        </label>
+        <button type="submit" class="primary-btn">Ver onde votar</button>
+      </form>
+
+      <div id="lookupMessage" class="lookup-message hidden" aria-live="polite"></div>
+
+      <div class="official-callout">
+        <div>
+          <strong>Fonte oficial</strong>
+          <p>Em caso de dúvida ou divergência, confirme no Autoatendimento Eleitoral do TSE.</p>
+        </div>
+        <a href="https://www.tse.jus.br/servicos-eleitorais/autoatendimento-eleitoral#/" target="_blank" rel="noreferrer">Verificar no TSE ↗</a>
       </div>
     </div>
-    <div id="lookupMessage" class="lookup-message hidden" aria-live="polite"></div>
   </main>
 
-  <section class="map-controls glass" aria-label="Camadas do mapa">
-    <button class="filter-chip active" data-mode="changes"><i class="dot changed"></i> Mudanças do 2º turno</button>
-    <button class="filter-chip" data-mode="all"><i class="dot current"></i> Todas as seções</button>
-    <select id="ufFilter" aria-label="Filtrar o mapa por UF"><option value="">Brasil inteiro</option></select>
+  <section class="layers-panel shell" aria-label="Camadas do mapa">
+    <div class="panel-title-row">
+      <div>
+        <p class="eyebrow">CAMADAS</p>
+        <h2>Visualização do mapa</h2>
+      </div>
+    </div>
+
+    <div class="layer-group">
+      <button class="filter-chip active" data-mode="changes"><i class="dot changed"></i> Só locais alterados</button>
+      <button class="filter-chip" data-mode="all"><i class="dot current"></i> Todos os locais da UF</button>
+    </div>
+
+    <div class="layer-group stacked">
+      <label class="control-field">
+        <span>Filtrar UF</span>
+        <select id="ufFilter" aria-label="Filtrar o mapa por UF"><option value="">Brasil inteiro</option></select>
+      </label>
+      <label class="toggle-row">
+        <input id="toggleRoute" type="checkbox" checked />
+        <span>Destacar trajeto do local antigo para o novo</span>
+      </label>
+      <label class="toggle-row">
+        <input id="toggleLabels" type="checkbox" checked />
+        <span>Exibir rótulos sobre o mapa</span>
+      </label>
+      <div class="basemap-switch" role="group" aria-label="Escolher base do mapa">
+        <button type="button" class="base-btn active" data-base="satellite">Satélite</button>
+        <button type="button" class="base-btn" data-base="topo">Claro</button>
+      </div>
+    </div>
+
+    <div class="legend-list">
+      <span><i class="legend-pin changed"></i> Alterações do 2º turno</span>
+      <span><i class="legend-pin current"></i> Demais locais</span>
+    </div>
   </section>
 
-  <aside id="stats" class="stats glass" aria-live="polite">
-    <div><strong id="statSections">—</strong><span>seções alteradas</span></div>
-    <div><strong id="statCities">—</strong><span>municípios</span></div>
-    <div><strong id="statUpdated">—</strong><span>snapshot</span></div>
+  <aside id="stats" class="stats-panel shell" aria-live="polite">
+    <div class="stat-card"><strong id="statSections">—</strong><span>seções alteradas</span></div>
+    <div class="stat-card"><strong id="statGroups">—</strong><span>grupos / locais</span></div>
+    <div class="stat-card"><strong id="statCities">—</strong><span>municípios</span></div>
+    <div class="stat-card"><strong id="statUpdated">—</strong><span>atualização</span></div>
+    <div class="source-line" id="sourceStatus" aria-live="polite"><span class="live-dot"></span><strong>carregando dados</strong></div>
   </aside>
 
-  <aside id="drawer" class="drawer glass" aria-hidden="true">
+  <aside id="drawer" class="drawer shell" aria-hidden="true">
     <button id="closeDrawer" class="drawer-close" aria-label="Fechar">×</button>
     <div id="drawerContent"></div>
   </aside>
 
+  <section id="searchPanel" class="overlay-panel hidden" aria-labelledby="searchPanelTitle">
+    <div class="overlay-card shell search-card">
+      <div class="overlay-head">
+        <div>
+          <p class="eyebrow">BUSCA</p>
+          <h2 id="searchPanelTitle">Pesquisar local, município, endereço, zona ou seção</h2>
+        </div>
+        <button id="closeSearch" class="icon-btn" aria-label="Fechar busca">×</button>
+      </div>
+      <div class="overlay-body">
+        <div class="search-wrap search-wrap-large">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m1.35-5.65A7 7 0 1 1 4 11a7 7 0 0 1 14 0Z"/></svg>
+          <input id="search" autocomplete="off" placeholder="Ex.: Uninove, São Paulo, Vergueiro, zona 1, seção 50" aria-label="Pesquisar locais de votação" />
+        </div>
+        <p class="search-help">A busca nacional destaca as alterações. Para todos os locais de uma UF, selecione a UF no painel de camadas.</p>
+        <div id="searchResults" class="search-results" role="listbox"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tablePanel" class="overlay-panel hidden" aria-labelledby="tableTitle">
+    <div class="overlay-card shell table-card">
+      <div class="overlay-head sticky">
+        <div>
+          <p class="eyebrow">PAINEL ANALÍTICO</p>
+          <h2 id="tableTitle">Todas as seções alteradas</h2>
+        </div>
+        <div class="overlay-actions">
+          <a class="official-btn compact" href="https://www.tse.jus.br/servicos-eleitorais/autoatendimento-eleitoral#/" target="_blank" rel="noreferrer">Confirmar no TSE ↗</a>
+          <button id="closeTable" class="icon-btn" aria-label="Fechar tabela">×</button>
+        </div>
+      </div>
+      <div class="overlay-body table-body">
+        <div class="table-kpis" id="tableKpis"></div>
+        <div class="table-toolbar">
+          <label class="control-field grow">
+            <span>Pesquisar</span>
+            <input id="tableSearch" type="search" placeholder="Pesquisar município, local, endereço, zona ou seção" />
+          </label>
+          <label class="control-field small">
+            <span>UF</span>
+            <select id="tableUfFilter"><option value="">Todas</option></select>
+          </label>
+        </div>
+        <div id="tableSummaryText" class="table-summary-text"></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>UF</th>
+                <th>Município</th>
+                <th>Zona</th>
+                <th>Seção 1º turno</th>
+                <th>Seção 2º turno</th>
+                <th>Local 1º turno</th>
+                <th>Local 2º turno</th>
+                <th>Endereço novo</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <div id="about" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
-    <section class="modal glass">
+    <section class="modal shell">
       <button id="closeAbout" class="drawer-close" aria-label="Fechar">×</button>
       <p class="eyebrow">FONTE E METODOLOGIA</p>
-      <h2 id="aboutTitle">O que mudou do 1º para o 2º turno.</h2>
-      <p>O site usa os <strong>Dados Abertos oficiais do TSE</strong> para comparar, por UF + município + zona + seção, o local registrado no 1º turno com o local vigente para o 2º turno. Isso evita depender da automação do painel SIG, que pode bloquear servidores de nuvem.</p>
-      <p>O foco continua sendo a pergunta prática: <strong>“votei nesta seção no 1º turno; onde devo votar no 2º?”</strong>. A camada “Todas as seções” mostra o cadastro vigente e o mapa destaca as combinações em que detectamos mudança de prédio/endereço.</p>
-      <p>Os sistemas públicos do TSE e dos TREs podem estar em sincronização e seus totais podem variar durante as atualizações. Por isso, a confirmação individual definitiva continua sendo o e-Título ou o Autoatendimento Eleitoral do TSE.</p>
-      <p>Este site não pede CPF, título de eleitor, data de nascimento ou nome da mãe.</p>
+      <h2 id="aboutTitle">Como interpretar este mapa</h2>
+      <p>O foco do site é responder de forma prática: <strong>“votei nesta seção no 1º turno; onde devo votar no 2º?”</strong></p>
+      <p>Os dados são derivados dos <strong>Dados Abertos oficiais do TSE</strong>. Quando o local consultado aparece na lista de mudanças, o painel destaca o local de origem (1º turno) e o local de destino (2º turno).</p>
+      <p>A tabela analítica mostra todas as seções alteradas, com filtros e pesquisa. O mapa prioriza a visualização das alterações, mas você também pode abrir os demais locais por UF.</p>
+      <p>Em caso de divergência, prevalecem sempre o <strong>e-Título</strong> e o <strong>Autoatendimento Eleitoral do TSE</strong>.</p>
       <div class="source-links">
         <a href="https://www.tse.jus.br/comunicacao/noticias/2026/Outubro/entenda-por-que-a-justica-eleitoral-trocou-o-endereco-de-algumas-secoes-para-o-2o-turno" target="_blank" rel="noreferrer">Explicação do TSE ↗</a>
-        <a href="https://www.tse.jus.br/servicos-eleitorais/autoatendimento-eleitoral#/" target="_blank" rel="noreferrer">Confirmar no TSE ↗</a>
+        <a href="https://www.tse.jus.br/servicos-eleitorais/autoatendimento-eleitoral#/" target="_blank" rel="noreferrer">Autoatendimento Eleitoral ↗</a>
       </div>
     </section>
   </div>
