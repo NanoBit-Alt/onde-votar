@@ -132,11 +132,10 @@ O site não precisa de CPF, nome, número do título, data de nascimento ou fili
 
 Mesmo que a seção não apareça como alterada no mapa, o eleitor deve confirmar o endereço no e-Título ou no Autoatendimento Eleitoral antes de sair para votar. O mapa é uma ferramenta de consulta e visualização de dados públicos, não substitui o serviço individual da Justiça Eleitoral.
 
+## Mapa-base na v6.1
 
-## Mapa CARTO no GitHub Pages
+A v6.1 não usa CARTO e não precisa de `CARTO_BASEMAP_KEY`. O mapa utiliza camadas públicas de imagem e referência carregadas diretamente pelo MapLibre.
 
-O mapa usa CARTO Basemaps. Cadastre no repositório o secret `CARTO_BASEMAP_KEY` em:
+Se você já criou o secret `CARTO_BASEMAP_KEY` no GitHub, pode deixá-lo cadastrado ou removê-lo: ele não é mais lido pelo workflow.
 
-`Settings → Secrets and variables → Actions → Repository secrets`
-
-O arquivo fonte mantém apenas o placeholder `__CARTO_BASEMAP_KEY__`. Durante o GitHub Actions, a etapa **Configurar chave do mapa CARTO** injeta a chave somente no artefato publicado. A chave de um mapa web é visível ao navegador por natureza; por isso, restrinja-a no painel da CARTO ao host do GitHub Pages (por exemplo `nanobit-alt.github.io`) e mantenha a atribuição OpenStreetMap/CARTO.
+O workflow também valida que nenhuma referência antiga a `cartocdn.com` ou ao placeholder `__CARTO_BASEMAP_KEY__` tenha voltado ao frontend antes de publicar.

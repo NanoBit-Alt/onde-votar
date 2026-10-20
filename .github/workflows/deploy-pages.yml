@@ -79,29 +79,14 @@ jobs:
             .cache/alteracoes-oficiais.meta.json
           retention-days: 14
 
-      - name: Configurar chave do mapa CARTO
+      - name: Validar frontend do mapa
         shell: bash
-        env:
-          CARTO_BASEMAP_KEY: ${{ secrets.CARTO_BASEMAP_KEY }}
         run: |
-          if [ -z "$CARTO_BASEMAP_KEY" ]; then
-            echo "::error::Repository secret CARTO_BASEMAP_KEY não configurado."
+          if grep -R "__CARTO_BASEMAP_KEY__\|cartocdn.com" -n site; then
+            echo "::error::Referência antiga da CARTO ainda encontrada no frontend."
             exit 1
           fi
-          python - <<'PY'
-          import os
-          from pathlib import Path
-          from urllib.parse import quote
-
-          path = Path('site/assets/app.js')
-          text = path.read_text(encoding='utf-8')
-          token = '__CARTO_BASEMAP_KEY__'
-          if token not in text:
-              raise SystemExit('Placeholder da chave CARTO não encontrado em app.js')
-          key = quote(os.environ['CARTO_BASEMAP_KEY'].strip(), safe='')
-          path.write_text(text.replace(token, key), encoding='utf-8')
-          print('Chave CARTO aplicada ao build do GitHub Pages.')
-          PY
+          echo "Mapa-base sem chave externa obrigatória: OK."
 
       - uses: actions/configure-pages@v5
 
