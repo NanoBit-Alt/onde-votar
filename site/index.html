@@ -72,9 +72,9 @@
       <button id="closeAbout" class="drawer-close" aria-label="Fechar">×</button>
       <p class="eyebrow">FONTE E METODOLOGIA</p>
       <h2 id="aboutTitle">O que mudou do 1º para o 2º turno.</h2>
-      <p>O foco é a relação da Justiça Eleitoral <strong>“Seções Eleitorais Alteradas no Segundo Turno”</strong>, exibida nas Estatísticas Eleitorais em Eleitorado da eleição → Capilaridade.</p>
-      <p>O site pesquisa primeiro a seção informada na lista de alterações. Quando uma redistribuição também altera o número da seção, mostramos <strong>seção do 1º turno → seção do 2º turno</strong>. O cadastro nacional de locais de votação de 2026 completa endereço, coordenadas e a camada “Todas as seções”.</p>
-      <p>A relação é dinâmica. Cada publicação registra a data do snapshot e, se a coleta automática falhar, o site identifica que está usando o último snapshot disponível. Para confirmação individual definitiva, use o e-Título ou o Autoatendimento Eleitoral do TSE.</p>
+      <p>O site usa os <strong>Dados Abertos oficiais do TSE</strong> para comparar, por UF + município + zona + seção, o local registrado no 1º turno com o local vigente para o 2º turno. Isso evita depender da automação do painel SIG, que pode bloquear servidores de nuvem.</p>
+      <p>O foco continua sendo a pergunta prática: <strong>“votei nesta seção no 1º turno; onde devo votar no 2º?”</strong>. A camada “Todas as seções” mostra o cadastro vigente e o mapa destaca as combinações em que detectamos mudança de prédio/endereço.</p>
+      <p>Os sistemas públicos do TSE e dos TREs podem estar em sincronização e seus totais podem variar durante as atualizações. Por isso, a confirmação individual definitiva continua sendo o e-Título ou o Autoatendimento Eleitoral do TSE.</p>
       <p>Este site não pede CPF, título de eleitor, data de nascimento ou nome da mãe.</p>
       <div class="source-links">
         <a href="https://www.tse.jus.br/comunicacao/noticias/2026/Outubro/entenda-por-que-a-justica-eleitoral-trocou-o-endereco-de-algumas-secoes-para-o-2o-turno" target="_blank" rel="noreferrer">Explicação do TSE ↗</a>
@@ -83,7 +83,7 @@
     </section>
   </div>
 
-  <div id="staleBanner" class="data-banner stale-banner hidden">A coleta mais recente do TSE falhou. Este mapa está mostrando o último snapshot oficial disponível.</div>
+  <div id="staleBanner" class="data-banner stale-banner hidden">A atualização mais recente não foi concluída. O mapa está mostrando o último snapshot validado disponível.</div>
   <div id="demoBanner" class="data-banner demo-banner hidden">Prévia de desenvolvimento: estes dados são apenas uma amostra para testar a interface. Não publique como consulta oficial.</div>
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>

@@ -29,6 +29,7 @@ FALLBACK = "https://cdn.tse.jus.br/estatistica/sead/odsele/eleitorado_locais_vot
 UA = "OndeVotoAgora/3.0 (+GitHub Pages; dados públicos TSE)"
 
 LOC_ALIASES = {
+    "round": ["NR_TURNO", "TURNO"],
     "uf": ["SG_UF", "UF"],
     "mun_code": ["CD_MUNICIPIO", "CODIGO_MUNICIPIO", "COD_MUNICIPIO"],
     "municipio": ["NM_MUNICIPIO", "MUNICIPIO", "NOME_MUNICIPIO"],
@@ -177,21 +178,57 @@ def download(url: str, dest: Path):
                     f.write(chunk)
 
 
+def _read_location_csv(raw: bytes):
+    last_error = None
+    for enc in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
+        for sep in (";", ",", "\t"):
+            try:
+                head = pd.read_csv(io.BytesIO(raw), sep=sep, encoding=enc, dtype=str, nrows=0)
+                if len(head.columns) <= 3:
+                    continue
+                sel = {k: choose(head.columns, aliases) for k, aliases in LOC_ALIASES.items()}
+                missing = [k for k in ("uf", "municipio", "zona", "secao", "local_id", "name") if not sel[k]]
+                if missing:
+                    continue
+                usecols = sorted({c for c in sel.values() if c})
+                df = pd.read_csv(io.BytesIO(raw), sep=sep, encoding=enc, dtype=str, usecols=usecols, low_memory=False)
+                out = pd.DataFrame({k: (df[c] if c else "") for k, c in sel.items()})
+                for c in ("round", "zona", "secao", "local_id", "mun_code"):
+                    out[c] = out[c].map(intstr)
+                for c in ("uf", "municipio", "name", "address", "bairro", "cep"):
+                    out[c] = out[c].fillna("").astype(str).str.strip()
+                out["uf"] = out["uf"].str.upper()
+                out["lat"] = out["lat"].map(number)
+                out["lng"] = out["lng"].map(number)
+                return out
+            except Exception as exc:
+                last_error = exc
+    raise RuntimeError(f"CSV de locais não reconhecido: {last_error}")
+
+
 def read_locations(path: Path):
-    df = read_table(path)
-    sel = {k: choose(df.columns, aliases) for k, aliases in LOC_ALIASES.items()}
-    missing = [k for k in ("uf", "municipio", "zona", "secao", "local_id", "name") if not sel[k]]
-    if missing:
-        raise RuntimeError(f"Colunas de locais ausentes: {missing}; disponíveis={list(df.columns)}")
-    out = pd.DataFrame({k: (df[c] if c else "") for k, c in sel.items()})
-    for c in ("zona", "secao", "local_id", "mun_code"):
-        out[c] = out[c].map(intstr)
-    for c in ("uf", "municipio", "name", "address", "bairro", "cep"):
-        out[c] = out[c].fillna("").astype(str).str.strip()
-    out["lat"] = out["lat"].map(number)
-    out["lng"] = out["lng"].map(number)
+    if path.suffix.lower() == ".zip":
+        frames = []
+        with zipfile.ZipFile(path) as z:
+            names = [n for n in z.namelist() if n.lower().endswith(".csv") and not n.startswith("__MACOSX")]
+            for name in names:
+                try:
+                    frames.append(_read_location_csv(z.read(name)))
+                except RuntimeError:
+                    continue
+        if not frames:
+            raise RuntimeError("ZIP de locais sem CSV compatível")
+        out = pd.concat(frames, ignore_index=True)
+    else:
+        out = _read_location_csv(path.read_bytes())
+
+    # Quando o cadastro traz os dois turnos, o site deve exibir o local vigente no 2º turno.
+    rounds = {x for x in out["round"].unique() if x}
+    if "2" in rounds:
+        out = out[out["round"] == "2"].copy()
+
     return out[(out.uf != "ZZ") & (out.zona != "") & (out.secao != "")].drop_duplicates(
-        ["uf", "zona", "secao"], keep="last"
+        ["uf", "mun_code", "zona", "secao"], keep="last"
     )
 
 
@@ -299,7 +336,7 @@ def build(chg, loc, out: Path, snapshot_meta: dict, demo: bool = False):
             )
             d["section_map"] = pairs
             d["electors"] = sum(int(x) for x in g.eleitores if str(x).isdigit()) or None
-            d["source"] = "TSE — Estatísticas Eleitorais — Capilaridade — Seções Eleitorais Alteradas no Segundo Turno"
+            d["source"] = snapshot_meta.get("source_label") or "TSE — Dados Abertos — comparação 1º→2º turno"
             grouped.append(d)
 
     ufs = []
@@ -358,7 +395,7 @@ def build(chg, loc, out: Path, snapshot_meta: dict, demo: bool = False):
         "cities": len({(x["uf"], x["municipio"]) for x in grouped if x["municipio"]}),
         "ufs_with_changes": len({x["uf"] for x in grouped}),
         "ufs": ufs,
-        "source": "TSE — Estatísticas Eleitorais — Capilaridade",
+        "source": snapshot_meta.get("source_label") or "TSE — Dados Abertos — Eleitorado por local de votação",
     }
     (out / "changes.json").write_text(json.dumps(grouped, ensure_ascii=False, separators=(",", ":"), allow_nan=False), encoding="utf-8")
     (out / "summary.json").write_text(json.dumps(summary_json, ensure_ascii=False, separators=(",", ":"), allow_nan=False), encoding="utf-8")

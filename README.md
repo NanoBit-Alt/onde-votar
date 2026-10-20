@@ -1,115 +1,133 @@
-# Onde voto agora? — alterações do 1º para o 2º turno de 2026
+# Onde voto agora? — 2º turno 2026 · v4
 
-Mapa interativo estático para GitHub Pages com uma pergunta principal:
+Mapa interativo para responder à pergunta prática:
 
-> **Em qual local eu devo votar no 2º turno, usando como referência a seção em que votei no 1º turno?**
+> **Votei nesta zona/seção no 1º turno. Onde devo votar no 2º turno?**
 
-O projeto não tenta descobrir a mudança comparando 2024 com 2026. A fonte prioritária é o relatório da Justiça Eleitoral **“Seções Eleitorais Alteradas no Segundo Turno”**, no painel de Capilaridade do TSE.
+A aplicação continua permitindo explorar todas as seções, mas o destaque principal são as mudanças de local entre os turnos.
 
-## Fluxo para o eleitor
+## O que mudou na v4
 
-1. informe **seção do 1º turno + UF**;
-2. município e zona são opcionais e servem para desempatar números repetidos;
-3. a aplicação procura primeiro no snapshot das alterações entre os turnos;
-4. se encontrar, mostra **seção 1º turno → seção 2º turno**, **local anterior → novo local** e faz zoom no novo endereço;
-5. se não encontrar, consulta a base nacional de locais de votação de 2026 da UF e mostra o local cadastrado, sem afirmar que ele “não mudou” — o usuário é orientado a confirmar no TSE.
-
-A modelagem aceita renumeração de seção (`seção_1t != seção_2t`). Isso é necessário em redistribuições eleitorais, não apenas em mudanças de prédio.
-
-## O mapa
-
-- abre no Brasil mostrando somente os locais afetados pelo snapshot atual;
-- usa agrupamento de pontos para não sobrecarregar o mapa;
-- pontos alterados têm pulso visual;
-- clicar ou pesquisar um local executa zoom suave (`flyTo`);
-- quando existem coordenadas do local antigo e do novo, desenha o deslocamento **antes → agora**;
-- a camada **Todas as seções** é secundária e é carregada por UF, sob demanda;
-- a busca livre aceita município, escola, endereço, zona ou seção.
-
-## Atualização automática do TSE
-
-O painel do TSE é uma aplicação Oracle APEX dinâmica. A v3 inclui `scripts/fetch_tse_changes.py`, que usa Chromium/Playwright para navegar pela interface pública e solicitar a exportação do relatório, em vez de depender de uma URL de sessão instável.
-
-O workflow `.github/workflows/deploy-pages.yml` tenta atualizar o snapshot três vezes por dia. Em cada execução:
-
-1. abre o painel do TSE com Chromium;
-2. tenta exportar “Seções Eleitorais Alteradas no Segundo Turno”;
-3. baixa/usa o cadastro nacional `Eleitorado por local de votação - 2026`;
-4. cruza a alteração com nome, endereço e coordenadas;
-5. valida o resultado;
-6. publica o site no GitHub Pages.
-
-Se a interface do TSE mudar, o coletor grava HTML, screenshot e lista dos controles em um artefato de diagnóstico do GitHub Actions.
-
-## Proteção contra publicação incorreta
-
-O build de produção **não publica a amostra de desenvolvimento** e também rejeita snapshots suspeitos com pouquíssimas seções.
-
-Se a coleta automática falhar:
-
-- havendo um snapshot oficial previamente versionado em `data-src/`, ele é usado e o site mostra explicitamente que está desatualizado;
-- sem fallback oficial, o workflow falha e **não substitui o site por dados falsos ou vazios**.
-
-Isso é intencional: é melhor manter a última captura identificada do que publicar uma consulta eleitoral enganosa.
-
-## Estrutura dos dados públicos gerados
+A v3 tentava automatizar a exportação do painel **SIG/Capilaridade** do TSE usando Chromium/Playwright. Esse painel é uma aplicação Oracle APEX e pode responder `403`/WAF para runners de nuvem, como GitHub Actions. Quando isso acontecia e ainda não havia um snapshot versionado, o workflow parava com:
 
 ```text
-site/data/
-├── meta.json                 # data/fonte/hash/estado do snapshot
-├── changes.json              # mudanças agrupadas por origem → destino
-├── summary.json              # totais por UF
-├── sections/
-│   ├── AC.json
-│   ├── ...
-│   └── SP.json               # índice seção → local, por UF
-└── locations/
-    ├── AC.json
-    ├── ...
-    └── SP.json               # locais, seções e coordenadas, por UF
+Falha ao exportar o TSE e não há snapshot oficial versionado para fallback.
 ```
 
-Os shards por UF evitam enviar centenas de milhares de seções para todo visitante logo na abertura da página.
+A v4 remove essa dependência do painel para o build principal.
 
-## Rodar a prévia local
+Agora o GitHub Action usa apenas arquivos públicos oficiais do **CDN/Dados Abertos do TSE**:
 
-A pasta `fixtures/` contém somente dados fictícios/de demonstração para testar a aplicação sem depender da rede.
+- `eleitorado_local_votacao_2026.zip` — cadastro de locais/seções;
+- `detalhe_votacao_secao_2026.zip` — baseline do 1º turno quando o cadastro atual não traz os dois turnos separadamente.
 
-```bash
-pip install -r requirements.txt
-python scripts/build_data.py \
-  --changes-file fixtures/alteracoes.csv \
-  --snapshot-meta fixtures/demo-meta.json \
-  --locations-file fixtures/locais-2026.csv \
-  --out site/data \
-  --demo
-python scripts/validate_data.py site/data --allow-demo
-cd site
-python -m http.server 8080
+O script `scripts/derive_tse_changes.py` compara os registros pela chave:
+
+```text
+UF + código do município + zona + seção
 ```
 
-Abra `http://localhost:8080`.
+Se o arquivo atual trouxer `NR_TURNO=1` e `NR_TURNO=2`, a comparação é feita dentro do próprio arquivo. Caso contrário, o script usa o detalhe da apuração do 1º turno como baseline.
 
-## Publicar no GitHub Pages
+São detectadas, entre outras situações:
 
-1. crie um repositório e envie o conteúdo deste ZIP;
-2. em **Settings → Pages**, selecione **GitHub Actions**;
-3. abra **Actions → Atualizar TSE e publicar GitHub Pages**;
-4. execute `Run workflow`;
-5. se a coleta do TSE funcionar, o próprio workflow monta a base nacional e publica.
+- mudança do `NR_LOCAL_VOTACAO`;
+- mudança material de endereço mantendo o mesmo código de local;
+- mudança relevante de coordenadas/nome/endereço.
 
-Como fallback manual, veja `data-src/README.md`.
+O CSV derivado é salvo como artefato do workflow junto com metadados e SHA-256, para auditoria.
 
-## Segurança e privacidade
+## Importante sobre o total de mudanças
 
-A aplicação não precisa de CPF, número do título, data de nascimento ou filiação. A busca local usa apenas UF, município, zona, seção, nome do local e endereço. A confirmação definitiva deve ser feita no **e-Título** ou no **Autoatendimento Eleitoral do TSE**.
+O TSE e os TREs estão atualizando os cadastros até perto do 2º turno. Os números divulgados podem mudar bastante entre snapshots e diferentes publicações oficiais podem estar em sincronização em horários distintos.
 
-## Arquivos principais
+Por isso o site:
 
-- `site/index.html` — interface;
-- `site/assets/app.js` — mapa, busca e consulta;
-- `site/assets/search-worker.js` — índice de busca no navegador;
-- `scripts/fetch_tse_changes.py` — coletor do painel TSE;
-- `scripts/build_data.py` — normalização e geração dos shards;
-- `scripts/validate_data.py` — trava de qualidade para publicação;
-- `.github/workflows/deploy-pages.yml` — atualização + GitHub Pages.
+- mostra a data do snapshot usado;
+- não fixa o número “4.352” no código;
+- usa o cadastro aberto vigente no momento do workflow;
+- orienta o eleitor a confirmar individualmente no **e-Título** ou **Autoatendimento Eleitoral**.
+
+## Como publicar
+
+1. substitua os arquivos da versão anterior pelos desta v4;
+2. faça commit e push para `main`;
+3. em **Settings → Pages**, mantenha **Source = GitHub Actions**;
+4. abra **Actions → Atualizar TSE e publicar GitHub Pages**;
+5. clique em **Run workflow**.
+
+No PowerShell, dentro da pasta do projeto:
+
+```powershell
+git add -A
+git commit -m "v4: usar dados abertos do TSE sem depender do SIG"
+git push
+```
+
+## O que o workflow faz
+
+```text
+Dados Abertos TSE
+   ↓
+eleitorado_local_votacao_2026.zip
+   ↓
+identifica 1º e 2º turnos
+   ├─ se ambos existirem: compara diretamente
+   └─ senão: usa detalhe_votacao_secao_2026.zip como baseline do 1º turno
+   ↓
+deriva seções com mudança de local
+   ↓
+gera site/data/*.json
+   ↓
+valida
+   ↓
+publica no GitHub Pages
+```
+
+Cada execução também guarda por 14 dias um artefato chamado aproximadamente:
+
+```text
+snapshot-tse-123
+```
+
+contendo:
+
+```text
+alteracoes-oficiais.csv
+alteracoes-oficiais.meta.json
+```
+
+Isso permite conferir exatamente qual snapshot gerou a versão publicada.
+
+## Estrutura
+
+```text
+.github/workflows/deploy-pages.yml
+scripts/
+  derive_tse_changes.py
+  build_data.py
+  validate_data.py
+site/
+  index.html
+  assets/
+  data/
+fixtures/
+data-src/
+```
+
+## Busca
+
+A busca principal pede:
+
+- seção em que a pessoa votou no 1º turno;
+- UF;
+- município opcional;
+- zona opcional.
+
+Zona e município são úteis porque o número de uma seção pode se repetir em lugares diferentes.
+
+O site não precisa de CPF, nome, número do título, data de nascimento ou filiação.
+
+## Fonte individual final
+
+Mesmo que a seção não apareça como alterada no mapa, o eleitor deve confirmar o endereço no e-Título ou no Autoatendimento Eleitoral antes de sair para votar. O mapa é uma ferramenta de consulta e visualização de dados públicos, não substitui o serviço individual da Justiça Eleitoral.
